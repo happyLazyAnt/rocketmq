@@ -373,6 +373,7 @@ public class DefaultMessageStore implements MessageStore {
 
         this.allocateMappedFileService.start();
 
+        //TODO: ZXZ start为空方法
         this.indexService.start();
 
         lock = lockFile.getChannel().tryLock(0, 1, false);
@@ -380,6 +381,7 @@ public class DefaultMessageStore implements MessageStore {
             throw new RuntimeException("Lock failed,MQ already started");
         }
 
+        //TODO: ZXZ 写入到lock文件
         lockFile.getChannel().write(ByteBuffer.wrap("lock".getBytes(StandardCharsets.UTF_8)));
         lockFile.getChannel().force(true);
 
@@ -398,6 +400,7 @@ public class DefaultMessageStore implements MessageStore {
             this.haService.start();
         }
 
+        //TODO: ZXZ  创建临时文件abort，存放当前的进程号
         this.createTempFile();
         this.addScheduleTask();
         this.perfs.start();

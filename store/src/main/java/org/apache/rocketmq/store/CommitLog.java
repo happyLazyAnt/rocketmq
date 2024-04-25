@@ -857,13 +857,14 @@ public class CommitLog implements Swappable {
         String topicQueueKey = generateKey(putMessageThreadLocal.getKeyBuilder(), msg);
         long elapsedTimeInLock = 0;
         MappedFile unlockMappedFile = null;
+        //TODO: ZXZ 获取存储文件
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile();
 
         long currOffset;
         if (mappedFile == null) {
             currOffset = 0;
         } else {
-            currOffset = mappedFile.getFileFromOffset() + mappedFile.getWrotePosition();
+            currOffset = mappedFile.getFileFromOffset() + mappedFile.getWrotePosition();//TODO:ZXZ MappedFile的存储结构 ？
         }
 
         int needAckNums = this.defaultMessageStore.getMessageStoreConfig().getInSyncReplicas();
@@ -887,6 +888,7 @@ public class CommitLog implements Swappable {
             }
         }
 
+        //TODO ZXZ: 获取一个ReentrantLock对象，如果锁已经被使用，会一直等待。
         topicQueueLock.lock(topicQueueKey);
         try {
 
@@ -899,10 +901,12 @@ public class CommitLog implements Swappable {
                 defaultMessageStore.assignOffset(msg);
             }
 
+            //TODO ZXZ: 对消息进行编码，先存入到编码器的ByteBuffer里面
             PutMessageResult encodeResult = putMessageThreadLocal.getEncoder().encode(msg);
             if (encodeResult != null) {
                 return CompletableFuture.completedFuture(encodeResult);
             }
+            //TODO ZXZ: 将编码器里面的ByteBuf里的数据转换为一个ByteBuffer放入到msg
             msg.setEncodedBuff(putMessageThreadLocal.getEncoder().getEncoderBuffer());
             PutMessageContext putMessageContext = new PutMessageContext(topicQueueKey);
 

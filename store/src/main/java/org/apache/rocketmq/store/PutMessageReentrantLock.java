@@ -20,6 +20,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Exclusive lock implementation to put message
+ * TODO: ZXZ 互斥锁，等待锁释放，由CPU重新唤起
  */
 public class PutMessageReentrantLock implements PutMessageLock {
     private ReentrantLock putMessageNormalLock = new ReentrantLock(); // NonfairSync

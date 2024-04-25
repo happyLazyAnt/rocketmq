@@ -51,7 +51,7 @@ public class AllocateMappedFileService extends ServiceThread {
     }
 
     public MappedFile putRequestAndReturnMappedFile(String nextFilePath, String nextNextFilePath, int fileSize) {
-        int canSubmitRequests = 2;
+        int canSubmitRequests = 2;//TODO:ZXZ 最多创建2个文件
         if (this.messageStore.isTransientStorePoolEnable()) {
             if (this.messageStore.getMessageStoreConfig().isFastFailIfNoBufferInStorePool()
                 && BrokerRole.SLAVE != this.messageStore.getMessageStoreConfig().getBrokerRole()) { //if broker is slave, don't fast fail even no buffer in pool
@@ -59,9 +59,11 @@ public class AllocateMappedFileService extends ServiceThread {
             }
         }
 
+        //TODO: zxz 构建创建请求，并放入请求表里面
         AllocateRequest nextReq = new AllocateRequest(nextFilePath, fileSize);
         boolean nextPutOK = this.requestTable.putIfAbsent(nextFilePath, nextReq) == null;
 
+        //TODO: zxz 加入请求队列
         if (nextPutOK) {
             if (canSubmitRequests <= 0) {
                 log.warn("[NOTIFYME]TransientStorePool is not enough, so create mapped file error, " +
@@ -96,10 +98,12 @@ public class AllocateMappedFileService extends ServiceThread {
             return null;
         }
 
+        //TODO:zxz 只等待当前文件的创建
         AllocateRequest result = this.requestTable.get(nextFilePath);
         try {
             if (result != null) {
                 messageStore.getPerfCounter().startTick("WAIT_MAPFILE_TIME_MS");
+                //TODO:ZXZ 等待创建文件，默认是5s
                 boolean waitOK = result.getCountDownLatch().await(waitTimeOut, TimeUnit.MILLISECONDS);
                 messageStore.getPerfCounter().endTick("WAIT_MAPFILE_TIME_MS");
                 if (!waitOK) {

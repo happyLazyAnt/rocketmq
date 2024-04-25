@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Spin lock Implementation to put message, suggest using this with low race conditions
+ * //TODO ZXZ: 自旋锁，不释放CPU，通过循环检查锁的状态，直到锁释放
  */
 public class PutMessageSpinLock implements PutMessageLock {
     //true: Can lock, false : in lock.

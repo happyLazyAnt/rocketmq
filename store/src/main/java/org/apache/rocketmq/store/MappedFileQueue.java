@@ -300,10 +300,12 @@ public class MappedFileQueue implements Swappable {
         long createOffset = -1;
         MappedFile mappedFileLast = getLastMappedFile();
 
+        //TODO:zxz 计算startOffset所属文件的便宜量，第一个文件是从0开始，类似：startOffset / this.mappedFileSize * this.mappedFileSize
         if (mappedFileLast == null) {
             createOffset = startOffset - (startOffset % this.mappedFileSize);
         }
 
+        //TODO:ZXZ 有文件就基于尾部的文件偏移量加上文件大小创建文件
         if (mappedFileLast != null && mappedFileLast.isFull()) {
             createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;
         }
@@ -342,9 +344,11 @@ public class MappedFileQueue implements Swappable {
     }
 
     public MappedFile tryCreateMappedFile(long createOffset) {
+        //TODO: ZXZ 文件名长度为20位
         String nextFilePath = this.storePath + File.separator + UtilAll.offset2FileName(createOffset);
         String nextNextFilePath = this.storePath + File.separator + UtilAll.offset2FileName(createOffset
                 + this.mappedFileSize);
+        //TODO: ZXZ 同时创建两个文件，减少请求等待的次数
         return doCreateMappedFile(nextFilePath, nextNextFilePath);
     }
 

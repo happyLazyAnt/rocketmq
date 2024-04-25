@@ -599,6 +599,11 @@ public class DefaultMappedFile extends AbstractMappedFile {
         COMMITTED_POSITION_UPDATER.set(this, pos);
     }
 
+    /**
+     * 提前占用内存，实现预热的作用，但是内存会被锁定，对内存空间的要求比较高
+     * @param type
+     * @param pages
+     */
     @Override
     public void warmMappedFile(FlushDiskType type, int pages) {
         this.mappedByteBufferAccessCountSinceLastSwap++;
@@ -736,14 +741,26 @@ public class DefaultMappedFile extends AbstractMappedFile {
     @Override
     public void mlock() {
         final long beginTime = System.currentTimeMillis();
+        //TODO: ZXZ 用于获取与该直接缓冲区（Direct Buffer）关联的底层原生内存地址
         final long address = ((DirectBuffer) (this.mappedByteBuffer)).address();
         Pointer pointer = new Pointer(address);
         {
+            /** TODO: ZXZ
+             * mlock() 是 Linux 系统提供的一个系统调用，其主要作用是将指定的进程地址空间中的内存区域锁定在物理内存中，确保这些内存不会被操作系统换出到交换分区（swap space）。锁定内存具有以下效果：
+             * 防止换出：锁定后的内存即使在系统内存压力较大时，也不会被换出到硬盘上的交换空间，从而保证了这部分内存始终处于物理内存中，可被快速访问。
+             * 提高数据安全性：对于包含敏感信息（如密码、密钥等）的内存区域，锁定可以降低这些数据意外写入磁盘的风险，增强数据保护。
+             * 保证实时性：对于对响应时间有严格要求的应用（如实时音频/视频处理、高优先级任务），锁定内存可以避免因内存换入/换出带来的延迟，确保数据处理的实时性。
+             */
             int ret = LibC.INSTANCE.mlock(pointer, new NativeLong(this.fileSize));
             log.info("mlock {} {} {} ret = {} time consuming = {}", address, this.fileName, this.fileSize, ret, System.currentTimeMillis() - beginTime);
         }
 
         {
+            /**
+             * TODO: ZXZ
+             * madvise() 是 Linux 系统提供的一个系统调用，用于向内核提供有关应用程序如何使用特定内存区域的建议，帮助内核优化内存管理策略。
+             * MADV_WILLNEED：建议内核提前将内存区域的内容加载到缓存中。
+             */
             int ret = LibC.INSTANCE.madvise(pointer, new NativeLong(this.fileSize), LibC.MADV_WILLNEED);
             log.info("madvise {} {} {} ret = {} time consuming = {}", address, this.fileName, this.fileSize, ret, System.currentTimeMillis() - beginTime);
         }
