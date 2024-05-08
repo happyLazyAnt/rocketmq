@@ -243,6 +243,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         this.timer.newTimeout(timerTaskScanResponseTable, 1000 * 3, TimeUnit.MILLISECONDS);
 
         int connectTimeoutMillis = this.nettyClientConfig.getConnectTimeoutMillis();
+        //管理nameserv的连接
         TimerTask timerTaskScanAvailableNameSrv = new TimerTask() {
             @Override
             public void run(Timeout timeout) {

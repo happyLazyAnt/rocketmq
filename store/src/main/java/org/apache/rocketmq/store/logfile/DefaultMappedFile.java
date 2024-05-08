@@ -272,11 +272,12 @@ public class DefaultMappedFile extends AbstractMappedFile {
         assert messageExt != null;
         assert cb != null;
 
+        //TODO:ZXZ  获取当前的写入位置
         int currentPos = WROTE_POSITION_UPDATER.get(this);
 
         if (currentPos < this.fileSize) {
             ByteBuffer byteBuffer = appendMessageBuffer().slice();
-            byteBuffer.position(currentPos);
+            byteBuffer.position(currentPos);//设置缓冲区的当前读写位置到指定的新位置。
             AppendMessageResult result;
             if (messageExt instanceof MessageExtBatch && !((MessageExtBatch) messageExt).isInnerBatch()) {
                 // traditional batch message
@@ -362,7 +363,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
      */
     @Override
     public int flush(final int flushLeastPages) {
-        if (this.isAbleToFlush(flushLeastPages)) {
+        if (this.isAbleToFlush(flushLeastPages)) {//TODO: ZXZ 判断是否满足刷盘条件
             if (this.hold()) {
                 int value = getReadPosition();
 
@@ -373,6 +374,16 @@ public class DefaultMappedFile extends AbstractMappedFile {
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
                         this.fileChannel.force(false);
                     } else {
+                        /**
+                         * TODO: ZXZ 将缓冲区中修改过的数据强制写入到与之关联的文件中，并确保这些更改被持久化到磁盘上
+                         * 功能描述
+                         * 数据刷盘：调用force()方法会导致操作系统立即将缓冲区中所有未刷新的数据写入到磁盘上。这对于提升数据的安全性和一致性至关重要，特别是在系统崩溃或断电的情况下，可以减少数据丢失的风险。
+                         * 绕过缓存：此方法通常会绕过操作系统的文件系统缓存直接写入磁盘，尽管具体的实现可能依赖于操作系统和JVM的具体配置。这意味着数据被直接写入持久存储，而非等待系统决定何时将缓存数据刷到磁盘。
+                         * 性能考量：虽然force()提供了数据持久化的保证，但频繁调用可能会对性能产生负面影响，因为它涉及更昂贵的磁盘I/O操作。因此，在需要平衡数据安全性和性能的场景中，应谨慎使用。
+                         * 使用场景
+                         * 关键数据更新：当你处理的是关键业务数据，且这些数据的丢失或损坏将造成重大影响时，应在数据写入后立即调用force()。
+                         * 事务日志：在数据库事务日志记录等场景，为了确保事务的ACID特性（原子性、一致性、隔离性、持久性），通常会在事务提交后使用force()确保日志数据被持久化。
+                         */
                         this.mappedByteBuffer.force();
                     }
                     this.lastFlushTime = System.currentTimeMillis();
@@ -387,7 +398,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
                 FLUSHED_POSITION_UPDATER.set(this, getReadPosition());
             }
         }
-        return this.getFlushedPosition();
+        return this.getFlushedPosition();//当前写入的位置
     }
 
     @Override

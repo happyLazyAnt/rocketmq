@@ -230,6 +230,7 @@ public class MessageStoreConfig {
     private boolean fastFailIfNoBufferInStorePool = false;
 
     // DLedger message store config
+    // DLedger是一套基于Raft协议的分布式日志存储组件
     private boolean enableDLegerCommitLog = false;
     private String dLegerGroup;
     private String dLegerPeers;

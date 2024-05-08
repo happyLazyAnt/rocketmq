@@ -300,7 +300,7 @@ public class MappedFileQueue implements Swappable {
         long createOffset = -1;
         MappedFile mappedFileLast = getLastMappedFile();
 
-        //TODO:zxz 计算startOffset所属文件的便宜量，第一个文件是从0开始，类似：startOffset / this.mappedFileSize * this.mappedFileSize
+        //TODO:zxz 计算startOffset所属文件的偏移量，第一个文件是从0开始，以下计算从MappedFileSize的最后一个整数倍的值开始。类似：startOffset / this.mappedFileSize * this.mappedFileSize
         if (mappedFileLast == null) {
             createOffset = startOffset - (startOffset % this.mappedFileSize);
         }
@@ -310,6 +310,7 @@ public class MappedFileQueue implements Swappable {
             createOffset = mappedFileLast.getFileFromOffset() + this.mappedFileSize;
         }
 
+        //TODO:ZXZ 如果createOffset超出了long表示的范围将如何处理？
         if (createOffset != -1 && needCreate) {
             return tryCreateMappedFile(createOffset);
         }
@@ -624,9 +625,10 @@ public class MappedFileQueue implements Swappable {
         if (mappedFile != null) {
             long tmpTimeStamp = mappedFile.getStoreTimestamp();
             int offset = mappedFile.flush(flushLeastPages);
+            //TODO: ZXZ 文件的起始位置+已经刷盘的位置，就是下次要刷盘的位置
             long where = mappedFile.getFileFromOffset() + offset;
-            result = where == this.flushedWhere;
-            this.flushedWhere = where;
+            result = where == this.flushedWhere;//相等则表示本次没有刷盘
+            this.flushedWhere = where; //更新刷盘位置
             if (0 == flushLeastPages) {
                 this.storeTimestamp = tmpTimeStamp;
             }
@@ -660,6 +662,7 @@ public class MappedFileQueue implements Swappable {
             MappedFile firstMappedFile = this.getFirstMappedFile();
             MappedFile lastMappedFile = this.getLastMappedFile();
             if (firstMappedFile != null && lastMappedFile != null) {
+                //TODO: ZXZ 超出当前文件列表范围
                 if (offset < firstMappedFile.getFileFromOffset() || offset >= lastMappedFile.getFileFromOffset() + this.mappedFileSize) {
                     LOG_ERROR.warn("Offset not matched. Request offset: {}, firstOffset: {}, lastOffset: {}, mappedFileSize: {}, mappedFiles count: {}",
                         offset,
@@ -668,6 +671,8 @@ public class MappedFileQueue implements Swappable {
                         this.mappedFileSize,
                         this.mappedFiles.size());
                 } else {
+
+                    //TODO: ZXZ 通过计算offset的差值来找到对应文件的index
                     int index = (int) ((offset / this.mappedFileSize) - (firstMappedFile.getFileFromOffset() / this.mappedFileSize));
                     MappedFile targetFile = null;
                     try {
@@ -675,11 +680,13 @@ public class MappedFileQueue implements Swappable {
                     } catch (Exception ignored) {
                     }
 
+                    //TODO: ZXZ
                     if (targetFile != null && offset >= targetFile.getFileFromOffset()
                         && offset < targetFile.getFileFromOffset() + this.mappedFileSize) {
                         return targetFile;
                     }
 
+                    //TODO：zxz 没有找到就遍历第一个满足条件的
                     for (MappedFile tmpMappedFile : this.mappedFiles) {
                         if (offset >= tmpMappedFile.getFileFromOffset()
                             && offset < tmpMappedFile.getFileFromOffset() + this.mappedFileSize) {
@@ -688,6 +695,7 @@ public class MappedFileQueue implements Swappable {
                     }
                 }
 
+                //TODO: ZXZ 如果第一次刷盘，没找到，则返回第一个文件
                 if (returnFirstOnNotFound) {
                     return firstMappedFile;
                 }

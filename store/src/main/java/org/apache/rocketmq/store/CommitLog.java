@@ -864,7 +864,7 @@ public class CommitLog implements Swappable {
         if (mappedFile == null) {
             currOffset = 0;
         } else {
-            currOffset = mappedFile.getFileFromOffset() + mappedFile.getWrotePosition();//TODO:ZXZ MappedFile的存储结构 ？
+            currOffset = mappedFile.getFileFromOffset() + mappedFile.getWrotePosition();//TODO:ZXZ MappedFile的存储结构 ？当前文件的起始偏移量+文件已写到的位置为新消息的便宜量
         }
 
         int needAckNums = this.defaultMessageStore.getMessageStoreConfig().getInSyncReplicas();
@@ -924,6 +924,7 @@ public class CommitLog implements Swappable {
                 if (null == mappedFile || mappedFile.isFull()) {
                     mappedFile = this.mappedFileQueue.getLastMappedFile(0); // Mark: NewFile may be cause noise
                     if (isCloseReadAhead()) {
+                        //TODO: ZXZ 向Linux系统建议：MADV_RANDOM：指示内存区域将被随机访问。
                         setFileReadMode(mappedFile, LibC.MADV_RANDOM);
                     }
                 }
@@ -933,6 +934,7 @@ public class CommitLog implements Swappable {
                     return CompletableFuture.completedFuture(new PutMessageResult(PutMessageStatus.CREATE_MAPPED_FILE_FAILED, null));
                 }
 
+                //TODO: zxz 将消息内容写入到文件对应的内存中
                 result = mappedFile.appendMessage(msg, this.appendMessageCallback, putMessageContext);
                 switch (result.getStatus()) {
                     case PUT_OK:
@@ -1415,7 +1417,10 @@ public class CommitLog implements Swappable {
             while (!this.isStopped()) {
                 boolean flushCommitLogTimed = CommitLog.this.defaultMessageStore.getMessageStoreConfig().isFlushCommitLogTimed();
 
+                //TODO:ZXZ 刷盘的间隔
                 int interval = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getFlushIntervalCommitLog();
+
+                //TODO:ZXZ 每次刷盘的最小页数
                 int flushPhysicQueueLeastPages = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getFlushCommitLogLeastPages();
 
                 int flushPhysicQueueThoroughInterval =
@@ -1443,8 +1448,11 @@ public class CommitLog implements Swappable {
                     }
 
                     long begin = System.currentTimeMillis();
+                    //TODO: zxz 找到要刷盘的文件，执行刷盘操作
                     CommitLog.this.mappedFileQueue.flush(flushPhysicQueueLeastPages);
                     long storeTimestamp = CommitLog.this.mappedFileQueue.getStoreTimestamp();
+
+                    //TODO： zxz 用于恢复时使用吗？
                     if (storeTimestamp > 0) {
                         CommitLog.this.defaultMessageStore.getStoreCheckpoint().setPhysicMsgTimestamp(storeTimestamp);
                     }
@@ -1751,6 +1759,7 @@ public class CommitLog implements Swappable {
             this.msgStoreItemMemory = ByteBuffer.allocate(END_FILE_MIN_BLANK_LENGTH);
         }
 
+        //TODO: ZXZ 将消息内容写入到mappedFile对应的内存中
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank,
             final MessageExtBrokerInner msgInner, PutMessageContext putMessageContext) {
             // STORETIMESTAMP + STOREHOSTADDRESS + OFFSET <br>
@@ -1791,6 +1800,7 @@ public class CommitLog implements Swappable {
             ByteBuffer preEncodeBuffer = msgInner.getEncodedBuff();
             final int msgLen = preEncodeBuffer.getInt(0);
 
+            //TODO: ZXZ 本文件剩余的空间不够存储当前的消息
             // Determines whether there is sufficient free space
             if ((msgLen + END_FILE_MIN_BLANK_LENGTH) > maxBlank) {
                 this.msgStoreItemMemory.clear();

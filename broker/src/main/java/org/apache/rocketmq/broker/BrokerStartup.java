@@ -115,6 +115,8 @@ public class BrokerStartup {
         }
 
         MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), brokerConfig);
+
+        //rockemqHome在shell启动脚本里面设置
         if (null == brokerConfig.getRocketmqHome()) {
             System.out.printf("Please set the %s variable in your environment " +
                 "to match the location of the RocketMQ installation", MixAll.ROCKETMQ_HOME_ENV);
@@ -136,6 +138,7 @@ public class BrokerStartup {
             }
         }
 
+        //从节点访问内存消息比例
         if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
             int ratio = messageStoreConfig.getAccessMessageInMemoryMaxRatio() - 10;
             messageStoreConfig.setAccessMessageInMemoryMaxRatio(ratio);
