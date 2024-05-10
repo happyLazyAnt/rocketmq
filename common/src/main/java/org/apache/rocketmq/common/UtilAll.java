@@ -696,6 +696,12 @@ public class UtilAll {
         if (buffer == null || !buffer.isDirect() || buffer.capacity() == 0) {
             return;
         }
+        /**
+         * TODO: ZXZ 回收内存
+         * DirectByteBuffer的内存回收主要是通过JVM的机制（如虚引用和Cleaner接口）来间接实现
+         * Cleaner接口： 在Java 9及以后版本中，虽然PhantomReference的使用方式仍然有效，但更推荐使用java.lang.ref.Cleaner（或其内部的Cleanable接口）。DirectByteBuffer在创建时会注册一个Cleaner对象，当DirectByteBuffer不再被使用且可被回收时，其关联的Cleaner会被触发执行，从而释放堆外内存。
+         * 显式释放： 在某些情况下，如果应用程序逻辑允许，可以直接调用sun.misc.Cleaner或其替代方案来显式释放内存。但在标准Java API中并没有公开这样的方法，通常需要通过反射来访问这些内部API，这并不是推荐的做法，因为它依赖于具体的JVM实现并且可能随JDK版本变化而不兼容。
+         */
         if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_9)) {
             try {
                 Field field = Unsafe.class.getDeclaredField("theUnsafe");
@@ -738,6 +744,15 @@ public class UtilAll {
         if (!buffer.isDirect()) {
             throw new IllegalArgumentException("buffer is non-direct");
         }
+        /**
+         * TODO: ZXZ
+         * DirectBuffer的attachment()方法返回一个用户可以设置的附加对象，这个对象可以是任何类型，通常用来存储与DirectBuffer相关的额外信息。attachment()方法通常与DirectBuffer的cleaner()方法一起使用，特别是在自定义内存管理策略中。
+         * attachment()方法的用途可能包括：
+         * 关联上下文：附加对象可以存储与DirectBuffer相关的特定上下文，例如创建DirectBuffer时的一些配置信息。
+         * 跟踪引用：在使用PhantomReference或Cleaner时，附加对象可以用来跟踪DirectBuffer，以便在适当时候进行内存清理。
+         * 用户数据：开发者可以将任意数据关联到DirectBuffer，方便在处理缓冲区时使用。
+         * 请注意，attachment()方法返回的对象不是自动管理的，需要开发者自行维护其生命周期。在不再需要附加对象时，确保正确地释放或清除它，以避免内存泄漏。由于attachment()方法是Java的内部API，其使用应谨慎，尽量避免对非标准库的依赖。
+         */
         ByteBuffer viewedBuffer = (ByteBuffer) ((DirectBuffer) buffer).attachment();
         if (viewedBuffer == null) {
             return buffer;

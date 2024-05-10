@@ -58,8 +58,27 @@ import org.apache.rocketmq.store.util.LibC;
 import sun.misc.Unsafe;
 import sun.nio.ch.DirectBuffer;
 
+//TODO:zxz 封装了要操作的文件，并通过FileChannel调用了MMAP技术，进行文件与内存的映射
 public class DefaultMappedFile extends AbstractMappedFile {
-    public static final int OS_PAGE_SIZE = 1024 * 4;
+
+    /**
+     * TODO: ZXZ
+     * 操作系统的页面大小（Page Size）是一个关键的内存管理参数，它有以下几个重要作用：
+     * 内存分配：操作系统以页面为单位分配内存给进程。页面大小决定了内存分配的粒度，较小的页面可以更精细地管理内存，但可能导致更多的内存碎片。
+     * 虚拟地址到物理地址映射：在虚拟内存系统中，页面是虚拟地址映射到物理地址的基本单位。这使得进程可以独立于实际物理内存布局工作。
+     * 缓存和I/O优化：页面大小影响磁盘I/O的效率。如果I/O操作的数据量与页面大小匹配，可以减少磁盘到内存的数据传输次数，提高性能。
+     * 页表管理：每个进程的页表记录了虚拟页到物理页的映射，页面大小决定了页表的大小和复杂性。
+     * 内存保护：页面边界有助于实现内存保护，防止一个进程访问其他进程或系统的内存区域。
+     * 交换和分页：当物理内存不足时，操作系统会将部分页面交换到磁盘上，页面大小决定了这种操作的效率。
+     * 硬件支持：现代处理器通常设计有硬件支持来处理固定大小的页面，以便快速执行页错误（page fault）和页面替换算法。
+     * 页面大小的选择通常是一个权衡，需要考虑内存效率、I/O效率、硬件支持和操作系统整体性能等因素。不同的系统可能会选择不同的页面大小来适应其特定的需求。
+     *
+     * 文件系统通常使用“块”（block）作为其读写操作的基本单位，而不是“页”。块的大小通常比内存页小，一般在512字节到4KB之间，这也是大多数磁盘I/O操作的最小粒度。例如，FAT32和NTFS文件系统的默认块大小是4KB，而一些老式文件系统可能使用512字节的块。
+     * 在数据库系统如MySQL中，InnoDB存储引擎使用的页大小通常是16KB，这是为了优化磁盘I/O，因为一次读取或写入更大的数据块可以提高效率，尤其是在进行预读操作时。
+     * 如果你是在询问关于磁盘的预读机制，通常磁盘驱动器会利用局部性原理，当读取一个数据页后，可能会预读相邻的几个页到缓存中，以减少后续访问的延迟。
+     */
+    public static final int OS_PAGE_SIZE = 1024 * 4; //TODO: ZXZ OS_PAGE_SIZE是操作系统的页面大小，默认是4K，用于计算刷盘的页数
+    //TODO: ZXZ UnsafeS提供了直接访问和修改内存的能力，绕过了Java语言的安全检查和类型系统
     public static final Unsafe UNSAFE = getUnsafe();
     private static final Method IS_LOADED_METHOD;
     public static final int UNSAFE_PAGE_SIZE = UNSAFE == null ? OS_PAGE_SIZE : UNSAFE.pageSize();
@@ -68,8 +87,10 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
     protected static final AtomicLong TOTAL_MAPPED_VIRTUAL_MEMORY = new AtomicLong(0);
 
+    //TODO:ZXZ 问题：为什么需要一个文件计数器？
     protected static final AtomicInteger TOTAL_MAPPED_FILES = new AtomicInteger(0);
 
+    //TODO: ZXZ AtomicIntegerFieldUpdater是Java 中用于原子更新对象的 volatile 整型字段的一个工具类
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> WROTE_POSITION_UPDATER;
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> COMMITTED_POSITION_UPDATER;
     protected static final AtomicIntegerFieldUpdater<DefaultMappedFile> FLUSHED_POSITION_UPDATER;
@@ -82,11 +103,17 @@ public class DefaultMappedFile extends AbstractMappedFile {
     /**
      * Message will put to here first, and then reput to FileChannel if writeBuffer is not null.
      */
+    //TODO:zxz 来源于缓存池分配的writeBuffer
     protected ByteBuffer writeBuffer = null;
+    //TODO:zxz 缓存池实现了一级内存缓存，具体的效率意义是什么？
     protected TransientStorePool transientStorePool = null;
     protected String fileName;
+
+    //TODO: ZXZ 文件内容的起始偏移量
     protected long fileFromOffset;
     protected File file;
+
+    //TODO: zxz 文件对应的内存映射
     protected MappedByteBuffer mappedByteBuffer;
     protected volatile long storeTimestamp = 0;
     protected boolean firstCreateInQueue = false;
@@ -150,6 +177,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
     public void init(final String fileName, final int fileSize,
         final TransientStorePool transientStorePool) throws IOException {
         init(fileName, fileSize);
+        //TODO: ZXZ 从buffer内存池中获取一个writeBuffer； 问题：如内存池没有足够的内存，该值为空
         this.writeBuffer = transientStorePool.borrowBuffer();
         this.transientStorePool = transientStorePool;
     }
@@ -165,6 +193,16 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
         try {
             this.fileChannel = new RandomAccessFile(this.file, "rw").getChannel();
+            /**
+             * TODO: ZXZ
+             * `MappedByteBuffer map(MapMode mode, long position, long size)`
+             * - `mode`: 指定映射模式，可以是 `MapMode.READ_ONLY`（只读）、`MapMode.READ_WRITE`（读写）或 `MapMode.PRIVATE`（私有）。
+             *   - `MapMode.READ_ONLY`：映射为只读，任何试图修改映射区域的尝试都会抛出 `ReadOnlyBufferException`。
+             *   - `MapMode.READ_WRITE`：映射为可读可写，更改会反映到文件，但可能不是线程安全的。
+             *   - `MapMode.PRIVATE`：映射为私有，更改不会立即反映到文件，而是创建一个私有副本，对其他映射该文件的进程不可见。
+             * - `position`: 映射开始的文件位置，以字节为单位。如果小于0，会抛出 `IllegalArgumentException`。
+             * - `size`: 要映射的区域大小，以字节为单位。如果大于剩余文件长度减去 `position`，会抛出 `IOException`。
+             */
             this.mappedByteBuffer = this.fileChannel.map(MapMode.READ_WRITE, 0, fileSize);
             TOTAL_MAPPED_VIRTUAL_MEMORY.addAndGet(fileSize);
             TOTAL_MAPPED_FILES.incrementAndGet();
@@ -244,6 +282,10 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
         int currentPos = WROTE_POSITION_UPDATER.get(this);
         if (currentPos < this.fileSize) {
+            /**
+             * TODO: ZXZ
+             * ByteBuffer.slice()方法返回一个与原ByteBuffer共享相同底层缓冲区的新ByteBuffer。新缓冲区的容量是原缓冲区剩余容量，其位置为0，limit等于原缓冲区当前位置，意味着新缓冲区可以从当前位置开始读取数据，不改变原缓冲区的状态。
+             */
             ByteBuffer byteBuffer = appendMessageBuffer().slice();
             byteBuffer.position(currentPos);
             AppendMessageResult result = cb.doAppend(byteBuffer, this.fileFromOffset, this.fileSize - currentPos, byteBufferMsg);
@@ -372,6 +414,11 @@ public class DefaultMappedFile extends AbstractMappedFile {
 
                     //We only append data to fileChannel or mappedByteBuffer, never both.
                     if (writeBuffer != null || this.fileChannel.position() != 0) {
+                        /**
+                         * TODO: ZXZ
+                         * FileChannel.force()方法用于确保文件通道的所有未同步的缓冲区更改立即写入磁盘。这个方法可以接受一个布尔参数metaData（在Java 7及更高版本中），如果为true，则同时强制写入元数据，例如文件长度和修改时间。默认情况下，如果省略参数或参数为false，通常只强制写入数据，不强制元数据。
+                         * 调用force()方法通常用于确保文件数据的持久化，防止系统崩溃或其他异常情况导致数据丢失。但是，需要注意的是，这并不意味着所有操作系统都支持对所有文件的强制写入，而且频繁调用force()可能会降低性能，因为磁盘I/O操作相对较慢。在大多数情况下，Java的文件系统缓存和同步机制已经足够保证数据的安全写入，除非有特定需求，否则通常不需要手动调用force()。
+                         */
                         this.fileChannel.force(false);
                     } else {
                         /**
@@ -420,6 +467,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
             }
         }
 
+        //TODO：zxz 文件已经满了，则需要释放申请的内存池
         // All dirty data has been committed to FileChannel.
         if (writeBuffer != null && this.transientStorePool != null && this.fileSize == COMMITTED_POSITION_UPDATER.get(this)) {
             this.transientStorePool.returnBuffer(writeBuffer);
