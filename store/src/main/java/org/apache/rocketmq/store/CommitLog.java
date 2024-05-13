@@ -1381,6 +1381,7 @@ public class CommitLog implements Swappable {
                 }
 
                 try {
+                    //TODO: ZXZ 文件缓冲池的情况下，将数据从内存中写入到文件filechannel对应的内存中
                     boolean result = CommitLog.this.mappedFileQueue.commit(commitDataLeastPages);
                     long end = System.currentTimeMillis();
                     if (!result) {
@@ -1423,6 +1424,7 @@ public class CommitLog implements Swappable {
                 //TODO:ZXZ 每次刷盘的最小页数
                 int flushPhysicQueueLeastPages = CommitLog.this.defaultMessageStore.getMessageStoreConfig().getFlushCommitLogLeastPages();
 
+                //TODO:ZXZ 刷盘的吞吐量，即超过刷盘规定的刷盘间隔，本次需要将说有未刷盘的都进行刷盘，已提高刷盘吞吐量
                 int flushPhysicQueueThoroughInterval =
                     CommitLog.this.defaultMessageStore.getMessageStoreConfig().getFlushCommitLogThoroughInterval();
 
@@ -1944,6 +1946,7 @@ public class CommitLog implements Swappable {
                 this.flushCommitLogService = new CommitLog.FlushRealTimeService();
             }
 
+            //TODO:zxz 将内存缓冲内容提交到文件对应的内存中
             this.commitRealTimeService = new CommitLog.CommitRealTimeService();
         }
 
