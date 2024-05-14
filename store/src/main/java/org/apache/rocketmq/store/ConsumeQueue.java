@@ -899,6 +899,7 @@ public class ConsumeQueue implements ConsumeQueueInterface, FileQueueLifeCycle {
                 this.minLogicOffset = expectLogicOffset;
                 this.mappedFileQueue.setFlushedWhere(expectLogicOffset);
                 this.mappedFileQueue.setCommittedWhere(expectLogicOffset);
+                //TODO: zxz 把当前消息之前的位置按照标准格式填充内容
                 this.fillPreBlank(mappedFile, expectLogicOffset);
                 log.info("fill pre blank space " + mappedFile.getFileName() + " " + expectLogicOffset + " "
                     + mappedFile.getWrotePosition());
@@ -925,6 +926,7 @@ public class ConsumeQueue implements ConsumeQueueInterface, FileQueueLifeCycle {
                 }
             }
             this.maxPhysicOffset = offset + size;
+            //TODO: zxz写入到文件中
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;
