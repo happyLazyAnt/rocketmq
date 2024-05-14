@@ -116,6 +116,7 @@ public class DefaultMappedFile extends AbstractMappedFile {
     //TODO: zxz 文件对应的内存映射
     protected MappedByteBuffer mappedByteBuffer;
     protected volatile long storeTimestamp = 0;
+    //TODO: zxz 代表是不是文件队里里面第一个创建的文件
     protected boolean firstCreateInQueue = false;
     private long lastFlushTime = -1L;
 
