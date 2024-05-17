@@ -62,6 +62,8 @@ public class ConsumeQueueStore {
     protected final DefaultMessageStore messageStore;
     protected final MessageStoreConfig messageStoreConfig;
     protected final QueueOffsetOperator queueOffsetOperator = new QueueOffsetOperator();
+
+    //TODO: zxz topic与消费队列的关系表
     protected final ConcurrentMap<String/* topic */, ConcurrentMap<Integer/* queueId */, ConsumeQueueInterface>> consumeQueueTable;
 
     public ConsumeQueueStore(DefaultMessageStore messageStore, MessageStoreConfig messageStoreConfig) {

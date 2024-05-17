@@ -163,6 +163,7 @@ public class IndexService {
         }
     }
 
+    //TODO: ZXZ 根据时间范围，来查询key多对应的phyOffset
     public QueryOffsetResult queryOffset(String topic, String key, int maxNum, long begin, long end) {
         List<Long> phyOffsets = new ArrayList<>(maxNum);
 

@@ -221,6 +221,7 @@ public class DefaultMessageStore implements MessageStore {
             this.commitLog = new CommitLog(this);
         }
 
+        //TODO: ZXZ消息队列文件存储
         this.consumeQueueStore = new ConsumeQueueStore(this, this.messageStoreConfig);
 
         this.flushConsumeQueueService = new FlushConsumeQueueService();
@@ -255,7 +256,10 @@ public class DefaultMessageStore implements MessageStore {
             Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("StoreScheduledThread", getBrokerIdentity()));
 
         this.dispatcherList = new LinkedList<>();
+        //TODO: ZXZ 将消息的相关信息写入到消息队列
         this.dispatcherList.addLast(new CommitLogDispatcherBuildConsumeQueue());
+
+        //TODO: ZXZ 建立消息的索引
         this.dispatcherList.addLast(new CommitLogDispatcherBuildIndex());
         if (messageStoreConfig.isEnableCompaction()) {
             this.compactionStore = new CompactionStore(this);
@@ -2775,6 +2779,7 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         public void doReput() {
+            //TODO:ZXZ 重放的偏移量小于commitlog的最小偏移量，说明中间有些消息已经过期，需要从最小偏移量开始重放
             if (this.reputFromOffset < DefaultMessageStore.this.commitLog.getMinOffset()) {
                 LOGGER.warn("The reputFromOffset={} is smaller than minPyOffset={}, this usually indicate that the dispatch behind too much and the commitlog has expired.",
                     this.reputFromOffset, DefaultMessageStore.this.commitLog.getMinOffset());
@@ -2782,6 +2787,7 @@ public class DefaultMessageStore implements MessageStore {
             }
             for (boolean doNext = true; this.isCommitLogAvailable() && doNext; ) {
 
+                //TODO: ZXZ 找到待重放offset之后的数据
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
 
                 if (result == null) {
@@ -2792,6 +2798,7 @@ public class DefaultMessageStore implements MessageStore {
                     this.reputFromOffset = result.getStartOffset();
 
                     for (int readSize = 0; readSize < result.getSize() && reputFromOffset < DefaultMessageStore.this.getConfirmOffset() && doNext; ) {
+                        //TODO: ZXZ 从commitlog中读取并构建消息
                         DispatchRequest dispatchRequest =
                             DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false, false, false);
                         int size = dispatchRequest.getBufferSize() == -1 ? dispatchRequest.getMsgSize() : dispatchRequest.getBufferSize();
@@ -2803,6 +2810,7 @@ public class DefaultMessageStore implements MessageStore {
 
                         if (dispatchRequest.isSuccess()) {
                             if (size > 0) {
+                                //TODO:zxz 交给各个消息调度器处理消息
                                 DefaultMessageStore.this.doDispatch(dispatchRequest);
 
                                 if (DefaultMessageStore.this.brokerConfig.isLongPollingEnable()
