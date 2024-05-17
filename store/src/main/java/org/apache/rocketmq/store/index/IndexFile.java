@@ -123,6 +123,7 @@ public class IndexFile {
                     slotValue = invalidIndex;
                 }
 
+                //TODO: ZXZ 消息存储时间与索引文件开始时间的差,最后存的是秒
                 long timeDiff = storeTimestamp - this.indexHeader.getBeginTimestamp();
 
                 timeDiff = timeDiff / 1000;
@@ -142,8 +143,10 @@ public class IndexFile {
                 this.mappedByteBuffer.putInt(absIndexPos, keyHash);
                 this.mappedByteBuffer.putLong(absIndexPos + 4, phyOffset);
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8, (int) timeDiff);
+                //TODO: ZXZ 存入该hashcode的前一条索引位置
                 this.mappedByteBuffer.putInt(absIndexPos + 4 + 8 + 4, slotValue);
 
+                //TODO: ZXZ slot里面存的是当前对应hash index最新一条在index文件的位置
                 this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());
 
                 if (this.indexHeader.getIndexCount() <= 1) {
@@ -191,6 +194,7 @@ public class IndexFile {
         return this.indexHeader.getEndPhyOffset();
     }
 
+    //TODO: ZXZ 索引文件包含的时间是否在查询时间范围内
     public boolean isTimeMatched(final long begin, final long end) {
         boolean result = begin < this.indexHeader.getBeginTimestamp() && end > this.indexHeader.getEndTimestamp();
         result = result || begin >= this.indexHeader.getBeginTimestamp() && begin <= this.indexHeader.getEndTimestamp();
@@ -198,6 +202,7 @@ public class IndexFile {
         return result;
     }
 
+    //TODO: ZXZ begin,end 都是时间，下面是搜索索引的偏移量
     public void selectPhyOffset(final List<Long> phyOffsets, final String key, final int maxNum,
                                 final long begin, final long end) {
         if (this.mappedFile.hold()) {
