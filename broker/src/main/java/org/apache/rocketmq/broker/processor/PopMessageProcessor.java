@@ -533,7 +533,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
             .getMessageAsync(requestHeader.getConsumerGroup(), topic, queueId, offset,
                 requestHeader.getMaxMsgNums() - getMessageResult.getMessageMapedList().size(), messageFilter)
             .thenCompose(result -> {
-                if (result == null) {
+                if (result == null) { //TODO:ZXZ 没有读取到消息
                     return CompletableFuture.completedFuture(null);
                 }
                 // maybe store offset is not correct.
@@ -581,6 +581,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
                         this.brokerController.getConsumerOffsetManager().commitOffset(channel.remoteAddress().toString(),
                             requestHeader.getConsumerGroup(), topic, queueId, finalOffset);
                     } else {
+                        //TODO: zxz 记录当前消费位置点
                         appendCheckPoint(requestHeader, topic, reviveQid, queueId, finalOffset, result, popTime, this.brokerController.getBrokerConfig().getBrokerName());
                     }
                     ExtraInfoUtil.buildStartOffsetInfo(startOffsetInfo, isRetry, queueId, finalOffset);
@@ -674,6 +675,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
             }
         }
 
+        //TODO:ZXZ 获取该消费组最近一次消费点，然后和当前消费点位比较，取最大值
         long bufferOffset = this.popBufferMergeService.getLatestOffset(lockKey);
         if (bufferOffset < 0) {
             return offset;
