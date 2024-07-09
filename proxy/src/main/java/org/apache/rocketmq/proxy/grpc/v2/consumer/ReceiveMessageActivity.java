@@ -129,7 +129,7 @@ public class ReceiveMessageActivity extends AbstractMessingActivity {
                     request.getBatchSize(),
                     actualInvisibleTime,
                     pollingTime,
-                    ConsumeInitMode.MAX,
+                    ConsumeInitMode.MAX, //TODO: zxz 默认从最新的一条读取；
                     subscriptionData,
                     fifo,
                     new PopMessageResultFilterImpl(maxAttempts),

@@ -440,6 +440,7 @@ public abstract class NettyRemotingAbstract {
      * This method is periodically invoked to scan and expire deprecated request.
      * </p>
      */
+    //TODO: ZXZ responseTable存储的内容是什么？异步或同步调用的指令
     public void scanResponseTable() {
         final List<ResponseFuture> rfList = new LinkedList<>();
         Iterator<Entry<Integer, ResponseFuture>> it = this.responseTable.entrySet().iterator();

@@ -289,7 +289,9 @@ public class PopMessageProcessor implements NettyRequestProcessor {
             return response;
         }
 
+        //TODO:ZXZ 过滤器支持两种过滤类型：1. SQL92 2. tag
         ExpressionMessageFilter messageFilter = null;
+        //TODO:ZXZ 指定了过滤类型和过滤表达式
         if (requestHeader.getExp() != null && requestHeader.getExp().length() > 0) {
             try {
                 SubscriptionData subscriptionData = FilterAPI.build(requestHeader.getTopic(), requestHeader.getExp(), requestHeader.getExpType());
@@ -325,6 +327,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
                 return response;
             }
         } else {
+            //TODO: ZXZ 默认走tag订阅，订阅所有tag
             try {
                 SubscriptionData subscriptionData = FilterAPI.build(requestHeader.getTopic(), "*", ExpressionType.TAG);
                 brokerController.getConsumerManager().compensateSubscribeData(requestHeader.getConsumerGroup(),
@@ -340,6 +343,8 @@ public class PopMessageProcessor implements NettyRequestProcessor {
         }
 
         int randomQ = random.nextInt(100);
+
+        //TODO: ZXZ reviveQid的作用？
         int reviveQid;
         if (requestHeader.isOrder()) {
             reviveQid = KeyBuilder.POP_ORDER_REVIVE_QUEUE;
@@ -352,9 +357,12 @@ public class PopMessageProcessor implements NettyRequestProcessor {
         ExpressionMessageFilter finalMessageFilter = messageFilter;
         StringBuilder finalOrderCountInfo = orderCountInfo;
 
+        //TODO: ZXZ 随机重试
         boolean needRetry = randomQ % 5 == 0;
         long popTime = System.currentTimeMillis();
         CompletableFuture<Long> getMessageFuture = CompletableFuture.completedFuture(0L);
+
+        //TODO: zxz 如过需要重试，先从重试队列里面获取信息
         if (needRetry && !requestHeader.isOrder()) {
             TopicConfig retryTopicConfig =
                 this.brokerController.getTopicConfigManager().selectTopicConfig(KeyBuilder.buildPopRetryTopic(requestHeader.getTopic(), requestHeader.getConsumerGroup()));
@@ -488,6 +496,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
 
         try {
             future.whenComplete((result, throwable) -> queueLockManager.unLock(lockKey));
+            //TODO: ZXZ 获取当前消费位置
             offset = getPopOffset(topic, requestHeader.getConsumerGroup(), queueId, requestHeader.getInitMode(),
                 true, lockKey, true);
             if (isOrder && brokerController.getConsumerOrderInfoManager().checkBlock(attemptId, topic,
@@ -504,6 +513,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
                 );
             }
 
+            //TODO:ZXZ 判断获取的消息数量是否已经大于需要请求的数量，如果是则不取了，直接返回
             if (getMessageResult.getMessageMapedList().size() >= requestHeader.getMaxMsgNums()) {
                 restNum = this.brokerController.getMessageStore().getMaxOffsetInQueue(topic, queueId) - offset + restNum;
                 future.complete(restNum);
@@ -518,6 +528,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
         AtomicLong atomicRestNum = new AtomicLong(restNum);
         AtomicLong atomicOffset = new AtomicLong(offset);
         long finalOffset = offset;
+        //TODO:ZXZ 异步读取消息，读取还需要读取的数据量
         return this.brokerController.getMessageStore()
             .getMessageAsync(requestHeader.getConsumerGroup(), topic, queueId, offset,
                 requestHeader.getMaxMsgNums() - getMessageResult.getMessageMapedList().size(), messageFilter)
@@ -636,6 +647,8 @@ public class PopMessageProcessor implements NettyRequestProcessor {
         boolean checkResetOffset) {
 
         long offset = this.brokerController.getConsumerOffsetManager().queryOffset(group, topic, queueId);
+
+        //TODO: zxz 该消费组没有消费过，则默认从最小或者最大消费，当前5.0的proxy中只支持从最大消费
         if (offset < 0) {
             if (ConsumeInitMode.MIN == initMode) {
                 offset = this.brokerController.getMessageStore().getMinOffsetInQueue(topic, queueId);
@@ -653,6 +666,7 @@ public class PopMessageProcessor implements NettyRequestProcessor {
             }
         }
 
+        //TODO: zxz 重置消费点位
         if (checkResetOffset) {
             Long resetOffset = resetPopOffset(topic, group, queueId);
             if (resetOffset != null) {

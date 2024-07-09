@@ -84,7 +84,7 @@ public class SendMessageProcessor extends AbstractSendMessageProcessor implement
         RemotingCommand request) throws RemotingCommandException {
         SendMessageContext sendMessageContext;
         switch (request.getCode()) {
-            case RequestCode.CONSUMER_SEND_MSG_BACK:
+            case RequestCode.CONSUMER_SEND_MSG_BACK: //TODO: zxz 消费失败的消息
                 return this.consumerSendMsgBack(ctx, request);
             default:
                 //TODO: ZXZ 根据消息版本获取请求头部，并将V2版本的消息头转换成v1版本

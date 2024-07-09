@@ -607,6 +607,7 @@ public class MessageDecoder {
         return sb.toString();
     }
 
+    //TODO:ZXZ 属性的格式：key1value2key1value
     public static Map<String, String> string2messageProperties(final String properties) {
         Map<String, String> map = new HashMap<>(128);
         if (properties != null) {

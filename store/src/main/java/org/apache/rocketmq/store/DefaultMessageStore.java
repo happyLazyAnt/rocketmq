@@ -798,6 +798,7 @@ public class DefaultMessageStore implements MessageStore {
 
         final long maxOffsetPy = this.commitLog.getMaxOffset();
 
+        //TODO:ZXZ 查找该队列的存储文件
         ConsumeQueueInterface consumeQueue = findConsumeQueue(topic, queueId);
         if (consumeQueue != null) {
             minOffset = consumeQueue.getMinOffsetInQueue();
@@ -828,12 +829,13 @@ public class DefaultMessageStore implements MessageStore {
                 long maxPhyOffsetPulling = 0;
                 int cqFileNum = 0;
 
+                //TODO:ZXZ 遍历该队满足所有满足条件的MapFile文件
                 while (getResult.getBufferTotalSize() <= 0
                     && nextBeginOffset < maxOffset
                     && cqFileNum++ < this.messageStoreConfig.getTravelCqFileNumWhenGetMessage()) {
-                    ReferredIterator<CqUnit> bufferConsumeQueue = consumeQueue.iterateFrom(nextBeginOffset);
+                    ReferredIterator<CqUnit> bufferConsumeQueue = consumeQueue.iterateFrom(nextBeginOffset);//TODO:zxz 找到包含该offset的MapFile文件
 
-                    if (bufferConsumeQueue == null) {
+                    if (bufferConsumeQueue == null) {//TODO:zxz 没找到
                         status = GetMessageStatus.OFFSET_FOUND_NULL;
                         nextBeginOffset = nextOffsetCorrection(nextBeginOffset, this.consumeQueueStore.rollNextFile(consumeQueue, nextBeginOffset));
                         LOGGER.warn("consumer request topic: " + topic + "offset: " + offset + " minOffset: " + minOffset + " maxOffset: "
@@ -843,6 +845,7 @@ public class DefaultMessageStore implements MessageStore {
 
                     try {
                         long nextPhyFileStartOffset = Long.MIN_VALUE;
+                        // TODO:ZXZ 遍历MapFile的消息
                         while (bufferConsumeQueue.hasNext()
                             && nextBeginOffset < maxOffset) {
                             CqUnit cqUnit = bufferConsumeQueue.next();
@@ -874,6 +877,7 @@ public class DefaultMessageStore implements MessageStore {
                                 }
                             }
 
+                            //TODO:ZXZ 判断消息是否满足过滤条件
                             if (messageFilter != null
                                 && !messageFilter.isMatchedByConsumeQueue(cqUnit.getValidTagsCodeAsLong(), cqUnit.getCqExtUnit())) {
                                 if (getResult.getBufferTotalSize() == 0) {
@@ -883,6 +887,7 @@ public class DefaultMessageStore implements MessageStore {
                                 continue;
                             }
 
+                            //TODO:ZXZ 从CommitLog中读取消息内容
                             SelectMappedBufferResult selectResult = this.commitLog.getMessage(offsetPy, sizePy);
                             if (null == selectResult) {
                                 if (getResult.getBufferTotalSize() == 0) {
